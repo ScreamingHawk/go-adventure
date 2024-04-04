@@ -4,6 +4,9 @@ define run
 endef
 
 run:
+	$(call run,app,)
+
+run-conf:
 	$(call run,app,./etc/app.conf)
 
 test:

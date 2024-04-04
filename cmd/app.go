@@ -38,12 +38,18 @@ func main() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "config file (default is ./etc/app.conf)")
+	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "config file (e.g. ./etc/app.conf)")
 }
 
 func initConfig() error {
-	if err := config.NewFromFile(configFile, cfg); err != nil {
-		return fmt.Errorf("failed to load config: %v", err)
+	if configFile == "" {
+		if err := config.NewFromEnv(cfg); err != nil {
+			return fmt.Errorf("failed to load config from env: %v", err)
+		}
+	} else {
+		if err := config.NewFromFile(configFile, cfg); err != nil {
+			return fmt.Errorf("failed to load config: %v", err)
+		}
 	}
 	return nil
 }
