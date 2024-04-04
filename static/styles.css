@@ -1,0 +1,89 @@
+/* CSS HEX */
+html {
+	--background: #FFF7D4;
+	--accent: #FFD95A;
+	--highlight: #C07F00;
+	--text: #4C3D3D;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+
+  background-color: var(--background);
+  color: var(--text);
+
+  font-size: 1.2em;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+main {
+  flex: 1;
+  padding: 0 20px;
+}
+
+footer {
+  background-color: var(--accent);
+  padding: 20px;
+}
+
+/* Form */
+
+.message-box {
+  display: flex;
+  align-items: center;
+	gap: 1em;
+  padding: 0.5em;
+  background-color: #fff;
+  border-top: 1px solid #ccc;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+}
+
+.message-box input[type="text"] {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.message-box button {
+  padding: 8px 20px;
+  background-color: var(--highlight);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Fonts */
+
+body,
+.edu-nsw-regular {
+  font-family: "Edu NSW ACT Foundation", cursive;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+h1,
+h2,
+.tangerine-regular {
+  font-family: "Tangerine", cursive;
+  font-weight: 600;
+  font-style: normal;
+}
