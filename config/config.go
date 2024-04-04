@@ -8,7 +8,7 @@ import (
 
 type Config struct {
 	Logger LoggerConfig `toml:"logger"`
-	Openai OpenaiConfig `toml:"openai"`
+	OpenAI OpenAIConfig `toml:"openai"`
 	Server ServerConfig `toml:"server"`
 }
 
@@ -17,7 +17,7 @@ type LoggerConfig struct {
 	Concise bool `toml:"concise"`
 }
 
-type OpenaiConfig struct {
+type OpenAIConfig struct {
 	ApiKey string `toml:"api_key"`
 	MaxTokens int `toml:"max_tokens"`
 	SystemPrompt string `toml:"system_prompt"`

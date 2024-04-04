@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/ScreamingHawk/go-adventure/config"
+	"github.com/ScreamingHawk/go-adventure/narrator"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -19,11 +19,12 @@ type Server struct {
 	logger *httplog.Logger
 	
 	HTTP *http.Server
+	Narrator *narrator.Narrator
 
 	running bool
 }
 
-func NewServer(cfg *config.ServerConfig, logger *httplog.Logger) (*Server, error) {
+func NewServer(cfg *config.ServerConfig, logger *httplog.Logger, narrator *narrator.Narrator) (*Server, error) {
 	httpServer := &http.Server{
 		Addr: fmt.Sprintf(":%d", cfg.Port),
 		ReadTimeout: 45 * time.Second,
@@ -35,6 +36,7 @@ func NewServer(cfg *config.ServerConfig, logger *httplog.Logger) (*Server, error
 	return &Server{
 		logger: logger,
 		HTTP: httpServer,
+		Narrator: narrator,
 	}, nil
 }
 
@@ -79,7 +81,13 @@ func (s *Server) handler() http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.NoCache)
+	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	// Timeout
+	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middleware.ThrottleBacklog(1, 10, 60 * time.Second)) // Cheap rate limiter
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
@@ -91,28 +99,11 @@ func (s *Server) handler() http.Handler {
 		MaxAge:           300,
 	}))
 
-	fileServer(r, "/", http.Dir("./static"))
+	r.Route("/api", func(r chi.Router) {
+		s.addNarratorRoutes(r)
+	})
 
-	//TODO API routes
+	s.addFileServer(r, "/", http.Dir("./static"))
 
 	return r
-}
-
-func fileServer(r chi.Router, path string, root http.FileSystem) {
-	if strings.ContainsAny(path, "{}*") {
-		panic("FileServer does not permit any URL parameters.")
-	}
-
-	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", http.StatusMovedPermanently).ServeHTTP)
-		path += "/"
-	}
-	path += "*"
-
-	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
-		rctx := chi.RouteContext(r.Context())
-		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
-		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
-		fs.ServeHTTP(w, r)
-	})
 }

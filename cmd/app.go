@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	"github.com/ScreamingHawk/go-adventure/config"
+	"github.com/ScreamingHawk/go-adventure/narrator"
 	"github.com/ScreamingHawk/go-adventure/server"
 	"github.com/go-chi/httplog/v2"
 	"github.com/spf13/cobra"
@@ -53,7 +54,12 @@ func run() error {
 		Concise: cfg.Logger.Concise,
 	})
 
-	s, err := server.NewServer(&cfg.Server, logger)
+	n, err := narrator.NewNarrator(&cfg.OpenAI, logger)
+	if err != nil {
+		return fmt.Errorf("failed to create narrator: %v", err)
+	}
+
+	s, err := server.NewServer(&cfg.Server, logger, n)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
 	}

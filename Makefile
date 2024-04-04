@@ -5,3 +5,6 @@ endef
 
 run:
 	$(call run,app,./etc/app.conf)
+
+test:
+	@go test -v ./...

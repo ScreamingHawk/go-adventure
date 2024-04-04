@@ -3,9 +3,9 @@
 	concise = true
 
 [openai]
-	open_ai_key = ""
+	api_key = ""
 	max_tokens = 1000
-	system_prompt = "You are an expert narrator that tells stories for children. Use short, easy to understand words."
+	system_prompt = "You are an expert narrator that tells stories for children. Your stories are written in second person. The user will respond with actions for the main character. Use short, easy to understand words."
 
 [server]
 	port = 5000
