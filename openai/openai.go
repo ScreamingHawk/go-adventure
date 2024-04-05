@@ -3,9 +3,11 @@ package openai
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ScreamingHawk/go-adventure/config"
 	"github.com/go-chi/httplog/v2"
+	ttlcache "github.com/jellydator/ttlcache/v3"
 	gopenai "github.com/sashabaranov/go-openai"
 )
 
@@ -16,7 +18,7 @@ type OpenAI struct {
 	maxTokens    int
 	systemPrompt string
 
-	chats map[string][]gopenai.ChatCompletionMessage
+	cache *ttlcache.Cache[string, []gopenai.ChatCompletionMessage]
 }
 
 func NewOpenAI(cfg *config.OpenAIConfig, logger *httplog.Logger) (*OpenAI, error) {
@@ -27,57 +29,63 @@ func NewOpenAI(cfg *config.OpenAIConfig, logger *httplog.Logger) (*OpenAI, error
 
 	systemPrompt := cfg.SystemPrompt + ". You MUST ALWAYS and ONLY respond with JSON."
 
+	cache := ttlcache.New(
+		ttlcache.WithTTL[string, []gopenai.ChatCompletionMessage](10 * time.Minute),
+	)
+	go cache.Start()
+
 	return &OpenAI{
 		logger:       logger,
 		client:       client,
 		maxTokens:    cfg.MaxTokens,
 		systemPrompt: systemPrompt,
-		chats:        make(map[string][]gopenai.ChatCompletionMessage),
+		cache:        cache,
 	}, nil
 }
 
 func (o *OpenAI) CreateChat(ctx context.Context, key string, prompt string) (string, error) {
-	if _, ok := o.chats[key]; ok {
+	if o.cache.Has(key) {
 		return "", fmt.Errorf("chat with key %q already exists", key)
 	}
 	messages := []gopenai.ChatCompletionMessage{
 		{Role: gopenai.ChatMessageRoleSystem, Content: o.systemPrompt},
 		{Role: gopenai.ChatMessageRoleUser, Content: prompt},
 	}
-	o.chats[key] = messages
 
 	response, err := o.callChatComplete(ctx, key, messages)
 	if err != nil {
 		return "", err
 	}
 
-	o.chats[key] = append(messages, gopenai.ChatCompletionMessage{Role: gopenai.ChatMessageRoleSystem, Content: response})
+	messages = append(messages, gopenai.ChatCompletionMessage{Role: gopenai.ChatMessageRoleSystem, Content: response})
+	o.cache.Set(key, messages, ttlcache.DefaultTTL)
+
 	return response, nil
 }
 
 func (o *OpenAI) UpdateChat(ctx context.Context, key string, prompt string) (string, error) {
-	messages, ok := o.chats[key]
-	if !ok {
+	if !o.cache.Has(key) {
 		return "", fmt.Errorf("chat with key %q does not exist", key)
 	}
-	messages = append(messages, gopenai.ChatCompletionMessage{Role: gopenai.ChatMessageRoleUser, Content: prompt})
-	o.chats[key] = messages
+	cacheItem := o.cache.Get(key)
+	messages := append(cacheItem.Value(), gopenai.ChatCompletionMessage{Role: gopenai.ChatMessageRoleUser, Content: prompt})
 
 	response, err := o.callChatComplete(ctx, key, messages)
 	if err != nil {
 		return "", err
 	}
 
-	o.chats[key] = append(messages, gopenai.ChatCompletionMessage{Role: gopenai.ChatMessageRoleSystem, Content: response})
+	messages = append(messages, gopenai.ChatCompletionMessage{Role: gopenai.ChatMessageRoleSystem, Content: response})
+	o.cache.Set(key, messages, ttlcache.DefaultTTL)
+
 	return response, nil
 }
 
 func (o *OpenAI) GetChat(key string) ([]gopenai.ChatCompletionMessage, error) {
-	messages, ok := o.chats[key]
-	if !ok {
+	if !o.cache.Has(key) {
 		return nil, fmt.Errorf("chat with key %q does not exist", key)
 	}
-	return messages, nil
+	return o.cache.Get(key).Value(), nil
 }
 
 func (o *OpenAI) callChatComplete(ctx context.Context, userId string, messages []gopenai.ChatCompletionMessage) (string, error) {
@@ -85,7 +93,7 @@ func (o *OpenAI) callChatComplete(ctx context.Context, userId string, messages [
 		Model:     gopenai.GPT3Dot5Turbo,
 		MaxTokens: o.maxTokens,
 		Messages:  messages,
-		User: userId,
+		User:      userId,
 		ResponseFormat: &gopenai.ChatCompletionResponseFormat{
 			Type: gopenai.ChatCompletionResponseFormatTypeJSONObject,
 		},
