@@ -19,13 +19,21 @@ const useResponse = async (response) => {
 
   const btnBox = document.getElementById("btnBox");
   if (resp.choices && resp.choices.length > 0) {
-    resp.choices.forEach((choice) => {
-      const btn = document.createElement("button");
-      btn.className = "choiceBtn";
-      btn.textContent = choice;
-      btn.addEventListener("click", updateClick);
-      btnBox.appendChild(btn);
-    });
+    // Delay for a better user experience
+    btnBox.style.transition = "";
+    btnBox.style.opacity = 0;
+    btnBox.style.transition = "opacity 1s";
+    setTimeout(() => {
+      // Fade in buttons
+      btnBox.style.opacity = 1;
+      resp.choices.forEach((choice) => {
+        const btn = document.createElement("button");
+        btn.className = "choiceBtn";
+        btn.textContent = choice;
+        btn.addEventListener("click", updateClick);
+        btnBox.appendChild(btn);
+      });
+    }, 3000);
   } else {
     // End of story
     const endP = document.createElement("p");
